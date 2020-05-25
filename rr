@@ -1,0 +1,184 @@
+#include <stdio.h>
+#pragma warning (disable :4996)
+
+#define MAX 99
+#define Q 4
+
+typedef struct process {
+	int id;
+	int reach;
+	int service;
+	int remain;
+}process;
+
+typedef struct Queue {
+	int front;
+	int rear;
+	int count;
+	process pro[MAX];
+}Queue;
+
+void QueueInit(Queue* q) {
+	q->front = 0;
+	q->rear = 0;
+	q->count = 0;
+	for (int i = 0; i < MAX; i++) {
+		q->pro[i].id = 0;
+	}
+}
+
+int QIsEmpty(Queue* q) {
+	if (q->count == 0) return 1;
+	else return 0;
+}
+
+int NextPosIdx(int pos) {
+	if (pos == MAX - 1)
+		return 0;
+	else return pos + 1;
+}
+
+void Enqueue(Queue* q, process *p)
+{ 
+	if (NextPosIdx(q->rear) == q->front) {
+		fprintf(stdout, "Q 가득 찼습니다.\n");
+		exit(-1);
+	}
+
+	if (q->count > 0 && q->pro[q->rear].id != p->id) {
+		q->rear = NextPosIdx(q->rear);
+	}
+	q->pro[q->rear].id = p->id;
+	q->pro[q->rear].reach = p->reach;
+	q->pro[q->rear].service = p->service;
+	q->pro[q->rear].remain = p->remain;
+
+	q->count++;
+}
+
+struct process Dequeue(Queue* q)
+{
+	process temppro;
+	if (QIsEmpty(q))
+	{
+		fprintf(stdout, "Q 에 노드데이터 없음");
+		exit(-1);
+	}
+	temppro = q->pro[0];
+
+	for (int i = 0; i < q->rear; i++)
+	{
+		q->pro[i] = q->pro[i + 1];
+	}
+
+	if (temppro.remain > Q)
+		q->pro[q->rear] = temppro;
+	if (temppro.remain <= Q) {
+		if (q->rear == 0)
+			q->rear = 0;
+		else if (q->rear > 0)
+			q->rear--;
+	}
+	q->count--;
+
+	return temppro;
+}
+
+void main()
+{
+	process pro[MAX];
+	process temppro;
+	Queue queue;
+	int i, j;
+	int b = 0;
+	int a = 0;
+	int pronum = 0;
+	int turn = 0;
+	int time = 0;
+	int end = 0;
+	int temp = 0;
+	double normalization = 0;
+
+	FILE* fp;
+	fp = fopen("input.txt", "r");
+	if (fp == NULL)
+	{
+		fprintf(stdout, "파일 열리지 않음");
+		system("pause");
+	}
+
+	for (i = 0; i < MAX; i++) {
+		fscanf(fp, "%d %d %d", &pro[i].id, &pro[i].reach, &pro[i].service);
+		if (pro[i].id == -1) {
+			break;
+		}
+		pronum++;
+	}
+	fclose(fp);
+
+	for (i = 0; i < pronum; i++)
+	{
+		for (j = i + 1; j < pronum; j++)
+		{
+			if (pro[i].reach > pro[j].reach)
+			{
+				temp = pro[i].id;
+				pro[i].id = pro[j].id;
+				pro[j].id = temp;
+
+				temp = pro[i].reach;
+				pro[i].reach = pro[j].reach;
+				pro[j].reach = temp;
+
+				temp = pro[i].service;
+				pro[i].service = pro[j].service;
+				pro[j].service = temp;
+			}
+		}
+	}
+
+	for (j = 0; j < pronum; j++) {
+		pro[j].remain = pro[j].service;
+	}
+
+	QueueInit(&queue);
+
+	fprintf(stdout, ":::결과:::\n");
+	fprintf(stdout, " Process ID     Arrive    Service      End Time    Trunaround Time     Normalized Turnaround Time   \n");
+
+	while (a != pronum) {
+		for (int i = b; i < pronum; i++) {
+			if (pro[i].reach <= time + Q && pro[i].remain > 0) {
+				Enqueue(&queue, &pro[i]);
+				b++;
+			}
+		}
+		if (!QIsEmpty(&queue)) {
+			temppro = Dequeue(&queue);
+
+			if (temppro.remain <= Q) {
+				time = time + temppro.remain;
+
+				temppro.remain = 0;
+
+				if (temppro.remain == 0) {
+					turn = time - temppro.reach;
+					normalization = turn / (temppro.service*1.0);
+					fprintf(stdout, " \t%2d        %2d       %2d           %3d        \t %3d        \t\t%.2lf\t  \n",
+						temppro.id, temppro.reach, temppro.service, time, turn, normalization);
+				}
+				a++;
+			}
+			else if (temppro.remain > Q) {
+				time = time + Q;
+				temppro.remain -= Q;
+				Enqueue(&queue, &temppro);
+			}
+		}
+		else
+			printf("큐가 모두 비어있습니다. \n");
+	}
+
+	printf("모든 프로세스가 수행되었습니다 \n");
+	system("pause");
+}
